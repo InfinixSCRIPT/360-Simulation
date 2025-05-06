@@ -33,6 +33,7 @@ canvas.addEventListener("mousedown", () => {
 });
 
 function shoot() {
+  // İki mermi - çifte gibi
   bullets.push({ x: player.x - 10, y: player.y, dx: 0, dy: -8 });
   bullets.push({ x: player.x + 10, y: player.y, dx: 0, dy: -8 });
 }
@@ -46,7 +47,7 @@ function spawnZombie() {
   });
 }
 
-function drawStickman(x, y, color) {
+function drawStickman(x, y, color, drawGuns = false) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -55,9 +56,11 @@ function drawStickman(x, y, color) {
   ctx.beginPath(); ctx.moveTo(x - 10, y + 10); ctx.lineTo(x + 10, y + 10); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x - 5, y + 30); ctx.moveTo(x, y + 20); ctx.lineTo(x + 5, y + 30); ctx.stroke();
 
-  // Silah (gri dikdörtgen)
-  ctx.fillStyle = "gray";
-  ctx.fillRect(x + 6, y + 8, 10, 4); // Sağ eline dikdörtgen çiz
+  if (drawGuns) {
+    ctx.fillStyle = "gray";
+    ctx.fillRect(x - 18, y + 6, 8, 4); // Sol el
+    ctx.fillRect(x + 10, y + 6, 8, 4); // Sağ el
+  }
 }
 
 function update() {
@@ -72,14 +75,22 @@ function update() {
   ctx.font = "20px monospace";
   ctx.fillText("Score: " + score, 10, 30);
 
+  // Game over yazısı sabit kalmalı
+  if (isGameOver) {
+    ctx.fillStyle = "white";
+    ctx.font = "40px monospace";
+    ctx.fillText("Game Over! Press R to Restart", canvas.width / 2 - 250, canvas.height / 2);
+    return; // Güncellemeyi durdur
+  }
+
   // Oyuncu hareket
   if (keys["w"]) player.y -= player.speed;
   if (keys["s"]) player.y += player.speed;
   if (keys["a"]) player.x -= player.speed;
   if (keys["d"]) player.x += player.speed;
 
-  // Oyuncu çiz
-  drawStickman(player.x, player.y, "white");
+  // Oyuncu çiz (çifte silahlı)
+  drawStickman(player.x, player.y, "white", true);
 
   // Mermiler
   ctx.fillStyle = "orange";
@@ -101,9 +112,6 @@ function update() {
       Math.abs(z.y - player.y) < 20
     ) {
       isGameOver = true;
-      ctx.fillStyle = "white";
-      ctx.font = "40px monospace";
-      ctx.fillText("Game Over! Press R to Restart", canvas.width / 2 - 250, canvas.height / 2);
     }
 
     // Mermiyle çarpışma
