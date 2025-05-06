@@ -24,13 +24,18 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-// Ateş etme (çifte silah)
 document.addEventListener("keydown", e => {
-  if (e.code === "Space" && !isGameOver) {
-    bullets.push({ x: player.x - 10, y: player.y, dx: 0, dy: -8 });
-    bullets.push({ x: player.x + 10, y: player.y, dx: 0, dy: -8 });
-  }
+  if (e.code === "Space" && !isGameOver) shoot();
 });
+
+canvas.addEventListener("mousedown", () => {
+  if (!isGameOver) shoot();
+});
+
+function shoot() {
+  bullets.push({ x: player.x - 10, y: player.y, dx: 0, dy: -8 });
+  bullets.push({ x: player.x + 10, y: player.y, dx: 0, dy: -8 });
+}
 
 function spawnZombie() {
   zombies.push({
@@ -49,6 +54,10 @@ function drawStickman(x, y, color) {
   ctx.beginPath(); ctx.moveTo(x, y + 5); ctx.lineTo(x, y + 20); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x - 10, y + 10); ctx.lineTo(x + 10, y + 10); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x - 5, y + 30); ctx.moveTo(x, y + 20); ctx.lineTo(x + 5, y + 30); ctx.stroke();
+
+  // Silah (gri dikdörtgen)
+  ctx.fillStyle = "gray";
+  ctx.fillRect(x + 6, y + 8, 10, 4); // Sağ eline dikdörtgen çiz
 }
 
 function update() {
