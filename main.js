@@ -33,17 +33,20 @@ canvas.addEventListener("mousedown", () => {
 });
 
 function shoot() {
-  // İki mermi - çifte gibi
+  // Oyuncunun silahları
   bullets.push({ x: player.x - 10, y: player.y, dx: 0, dy: -8 });
   bullets.push({ x: player.x + 10, y: player.y, dx: 0, dy: -8 });
 }
 
 function spawnZombie() {
+  const isRed = score >= 50 && Math.random() < 0.5; // 50 skor sonrası %50 kırmızı zombi
   zombies.push({
     x: Math.random() * canvas.width,
     y: spawnLineY + 5,
     size: 30,
-    speed: 1 + Math.random() * 1.5
+    speed: isRed ? 0 : 1 + Math.random() * 1.5,
+    type: isRed ? "red" : "green",
+    cooldown: 0
   });
 }
 
@@ -58,8 +61,8 @@ function drawStickman(x, y, color, drawGuns = false) {
 
   if (drawGuns) {
     ctx.fillStyle = "gray";
-    ctx.fillRect(x - 18, y + 6, 8, 4); // Sol el
-    ctx.fillRect(x + 10, y + 6, 8, 4); // Sağ el
+    ctx.fillRect(x - 18, y + 6, 8, 4);
+    ctx.fillRect(x + 10, y + 6, 8, 4);
   }
 }
 
@@ -75,38 +78,68 @@ function update() {
   ctx.font = "20px monospace";
   ctx.fillText("Score: " + score, 10, 30);
 
-  // Game over yazısı sabit kalmalı
+  // Game Over
   if (isGameOver) {
     ctx.fillStyle = "white";
     ctx.font = "40px monospace";
     ctx.fillText("Game Over! Press R to Restart", canvas.width / 2 - 250, canvas.height / 2);
-    return; // Güncellemeyi durdur
+    return;
   }
 
-  // Oyuncu hareket
+  // Hareket
   if (keys["w"]) player.y -= player.speed;
   if (keys["s"]) player.y += player.speed;
   if (keys["a"]) player.x -= player.speed;
   if (keys["d"]) player.x += player.speed;
 
-  // Oyuncu çiz (çifte silahlı)
+  // Ekran dışına çıkışı engelle
+  player.x = Math.max(player.size / 2, Math.min(canvas.width - player.size / 2, player.x));
+  player.y = Math.max(player.size / 2, Math.min(canvas.height - player.size / 2, player.y));
+
   drawStickman(player.x, player.y, "white", true);
 
   // Mermiler
-  ctx.fillStyle = "orange";
   bullets.forEach((b, i) => {
     b.x += b.dx;
     b.y += b.dy;
+    ctx.fillStyle = b.hostile ? "red" : "orange";
     ctx.fillRect(b.x, b.y, 6, 6);
-    if (b.y < 0) bullets.splice(i, 1);
+
+    // Düşman mermisi oyuncuya çarparsa
+    if (b.hostile && Math.abs(b.x - player.x) < 10 && Math.abs(b.y - player.y) < 20) {
+      isGameOver = true;
+    }
+
+    if (b.y < 0 || b.y > canvas.height || b.x < 0 || b.x > canvas.width) {
+      bullets.splice(i, 1);
+    }
   });
 
   // Zombiler
   zombies.forEach((z, zi) => {
-    z.y += z.speed;
-    drawStickman(z.x, z.y, "green");
+    if (z.type === "green") {
+      z.y += z.speed;
+    }
 
-    // Oyuncuya çarparsa
+    drawStickman(z.x, z.y, z.type);
+
+    if (z.type === "red") {
+      if (z.cooldown <= 0) {
+        const angle = Math.atan2(player.y - z.y, player.x - z.x);
+        bullets.push({
+          x: z.x,
+          y: z.y,
+          dx: Math.cos(angle) * 4,
+          dy: Math.sin(angle) * 4,
+          hostile: true
+        });
+        z.cooldown = 100;
+      } else {
+        z.cooldown--;
+      }
+    }
+
+    // Zombi çarpması
     if (
       Math.abs(z.x - player.x) < 20 &&
       Math.abs(z.y - player.y) < 20
@@ -114,12 +147,9 @@ function update() {
       isGameOver = true;
     }
 
-    // Mermiyle çarpışma
+    // Oyuncu mermisiyle zombi çarpışması
     bullets.forEach((b, bi) => {
-      if (
-        b.x > z.x - 10 && b.x < z.x + 10 &&
-        b.y > z.y && b.y < z.y + 20
-      ) {
+      if (!b.hostile && b.x > z.x - 10 && b.x < z.x + 10 && b.y > z.y && b.y < z.y + 20) {
         zombies.splice(zi, 1);
         bullets.splice(bi, 1);
         score += 1;
@@ -127,7 +157,7 @@ function update() {
     });
   });
 
-  if (!isGameOver) requestAnimationFrame(update);
+  requestAnimationFrame(update);
 }
 
 setInterval(spawnZombie, 1000);
