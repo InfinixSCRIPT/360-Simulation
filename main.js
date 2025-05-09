@@ -1,3 +1,4 @@
+// Güncellenmiş 360 Simulation - main.js
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
@@ -21,6 +22,7 @@ let spawnLineY = 50;
 
 document.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
+  if (e.key === " " && !isGameOver) shoot();
   if (e.key === "r" && isGameOver) location.reload();
 });
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
@@ -34,16 +36,20 @@ function shoot() {
 }
 
 function spawnZombie() {
-  const isRed = score >= 25 && Math.random() < 0.5;
-  const zombie = {
+  let type = "green";
+  if (score >= 75) type = Math.random() < 0.5 ? "black" : "red";
+  else if (score >= 25) type = Math.random() < 0.5 ? "red" : "green";
+
+  zombies.push({
     x: Math.random() * canvas.width,
     y: spawnLineY + 5,
     size: 30,
-    color: isRed ? "red" : "green",
-    speed: isRed ? 0 : 1 + Math.random() * 1.5,
-    lastShot: Date.now()
-  };
-  zombies.push(zombie);
+    color: type,
+    speed: type === "green" ? 1 + Math.random() * 1.5 : 0,
+    lastShot: Date.now(),
+    moveTimer: 0,
+    moveOffset: 0
+  });
 }
 
 function drawStickman(x, y, color, drawGuns = false) {
@@ -78,7 +84,6 @@ function update() {
     return;
   }
 
-  // Oyuncu hareket ve ekran sınırı
   if (keys["w"] && player.y > 0) player.y -= player.speed;
   if (keys["s"] && player.y < canvas.height - 30) player.y += player.speed;
   if (keys["a"] && player.x > 0) player.x -= player.speed;
@@ -86,7 +91,6 @@ function update() {
 
   drawStickman(player.x, player.y, "white", true);
 
-  // Mermiler
   ctx.fillStyle = "orange";
   bullets.forEach((b, i) => {
     b.y += b.dy;
@@ -94,51 +98,46 @@ function update() {
     if (b.y < 0) bullets.splice(i, 1);
   });
 
-  // Kırmızı zombilerin mermileri
   ctx.fillStyle = "red";
   enemyBullets.forEach((b, i) => {
     b.y += b.dy;
     ctx.fillRect(b.x, b.y, 5, 5);
     if (b.y > canvas.height) enemyBullets.splice(i, 1);
-    if (
-      b.x > player.x - 10 && b.x < player.x + 10 &&
-      b.y > player.y && b.y < player.y + 20
-    ) {
-      isGameOver = true;
-    }
+    if (b.x > player.x - 10 && b.x < player.x + 10 && b.y > player.y && b.y < player.y + 20) isGameOver = true;
   });
 
-  // Zombiler
   zombies.forEach((z, zi) => {
+    const now = Date.now();
     if (z.color === "green") {
       z.y += z.speed;
-    } else {
-      if (Date.now() - z.lastShot > 3000) {
-        enemyBullets.push({
-          x: z.x,
-          y: z.y + 10,
-          dx: 0,
-          dy: 4
-        });
-        z.lastShot = Date.now();
+    } else if (z.color === "red") {
+      if (now - z.moveTimer >= 2000) {
+        z.y += 5;
+        z.moveTimer = now;
+      }
+      if (now - z.lastShot > 3000) {
+        enemyBullets.push({ x: z.x, y: z.y + 10, dx: 0, dy: 4 });
+        z.lastShot = now;
+      }
+    } else if (z.color === "black") {
+      if (now - z.moveTimer >= 5000) {
+        z.y += 10; // 1 cm = 10px yaklaşık
+        z.moveTimer = now;
+      }
+      if (now - z.lastShot > 3000) {
+        enemyBullets.push({ x: z.x - 10, y: z.y + 10, dx: 0, dy: 4 });
+        enemyBullets.push({ x: z.x + 10, y: z.y + 10, dx: 0, dy: 4 });
+        z.lastShot = now;
       }
     }
 
     drawStickman(z.x, z.y, z.color);
 
-    if (
-      Math.abs(z.x - player.x) < 20 &&
-      Math.abs(z.y - player.y) < 20
-    ) {
-      isGameOver = true;
-    }
+    if (Math.abs(z.x - player.x) < 20 && Math.abs(z.y - player.y) < 20) isGameOver = true;
 
     bullets.forEach((b, bi) => {
-      if (
-        b.x > z.x - 10 && b.x < z.x + 10 &&
-        b.y > z.y && b.y < z.y + 20
-      ) {
-        score += z.color === "red" ? 4 : 1;
+      if (b.x > z.x - 10 && b.x < z.x + 10 && b.y > z.y && b.y < z.y + 20) {
+        score += z.color === "red" ? 4 : z.color === "black" ? 12 : 1;
         zombies.splice(zi, 1);
         bullets.splice(bi, 1);
       }
