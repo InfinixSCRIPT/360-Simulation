@@ -95,6 +95,12 @@ function update() {
   if (keys["a"]) player.x -= player.speed;
   if (keys["d"]) player.x += player.speed;
 
+  // Map dışına çıkmama - oyuncu sınırda durmalı
+  if (player.x < 0) player.x = 0;
+  if (player.x > canvas.width) player.x = canvas.width;
+  if (player.y < 0) player.y = 0;
+  if (player.y > canvas.height) player.y = canvas.height;
+
   // Oyuncu çiz (çifte silahlı)
   drawStickman(player.x, player.y, "white", true);
 
@@ -109,64 +115,43 @@ function update() {
 
   // Zombiler
   zombies.forEach((z, zi) => {
-    // Zombi türüne göre farklı özellikler
-    if (z.type === 'red') {
-      z.y += z.speed;
-      drawStickman(z.x, z.y, "red", true); // Kırmızı zombi çiz
-      if (score >= 25 && score < 50) z.y += 5; // Kırmızı zombiler 25 puandan sonra
+    z.y += z.speed;
 
-      // Kırmızı zombi ateş etsin
-      if (z.y % 2 === 0) shootRedZombie(z);
-
+    // Zombi türlerine göre çizim
+    if (z.type === 'green') {
+      drawStickman(z.x, z.y, "green");
+    } else if (z.type === 'red') {
+      drawStickman(z.x, z.y, "red");
     } else if (z.type === 'black') {
-      z.y += 1;
-      drawStickman(z.x, z.y, "black", true); // Siyah zombi çiz
-      if (z.y > canvas.height) {
-        zombies.splice(zi, 1);
-      }
-      if (z.y % 2 === 0) shootBlackZombie(z);
-    } else {
-      z.y += z.speed;
-      drawStickman(z.x, z.y, "green"); // Yeşil zombi çiz
+      drawStickman(z.x, z.y, "black", true);
     }
 
     // Oyuncuya çarparsa
-    if (
-      Math.abs(z.x - player.x) < 20 &&
-      Math.abs(z.y - player.y) < 20
-    ) {
+    if (Math.abs(z.x - player.x) < 20 && Math.abs(z.y - player.y) < 20) {
       isGameOver = true;
     }
 
     // Mermiyle çarpışma
     bullets.forEach((b, bi) => {
-      if (
-        b.x > z.x - 10 && b.x < z.x + 10 &&
-        b.y > z.y && b.y < z.y + 20
-      ) {
+      if (b.x > z.x - 10 && b.x < z.x + 10 && b.y > z.y && b.y < z.y + 20) {
         zombies.splice(zi, 1);
         bullets.splice(bi, 1);
-        score += (z.type === 'red') ? 4 : 1;
-        score += (z.type === 'black') ? 12 : 0;
+        score += z.type === 'red' ? 4 : z.type === 'black' ? 12 : 1;
       }
     });
+
+    // Kırmızı Zombi hareketi
+    if (z.type === 'red') {
+      if (z.y === spawnLineY + 5) z.y = spawnLineY + 7; // 2px ileride durmalı
+    }
+
+    // Siyah Zombi hareketi
+    if (z.type === 'black') {
+      if (z.y === spawnLineY + 5) z.y = spawnLineY + 6; // 1px ileride durmalı
+    }
   });
 
   if (!isGameOver) requestAnimationFrame(update);
-}
-
-function shootRedZombie(z) {
-  // Kırmızı zombi mermi atma fonksiyonu
-  setTimeout(() => {
-    bullets.push({ x: z.x, y: z.y, dx: 0, dy: 4 });
-  }, 3000); // Kırmızı zombinin 3 saniyede 1 mermi atması
-}
-
-function shootBlackZombie(z) {
-  // Siyah zombi mermi atma fonksiyonu
-  setTimeout(() => {
-    bullets.push({ x: z.x, y: z.y, dx: 0, dy: 4 });
-  }, 1500); // Siyah zombinin 1 saniyede 2 mermi atması
 }
 
 setInterval(spawnZombie, 1000);
