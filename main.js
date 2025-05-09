@@ -17,7 +17,7 @@ let keys = {};
 let score = 0;
 let isGameOver = false;
 let spawnLineY = 50;
-let blackZombieShootTimers = new Map();
+let zombieShootTimers = new Map();
 
 // INPUT EVENTS
 document.addEventListener("keydown", e => {
@@ -44,7 +44,7 @@ function spawnZombie() {
     type = "green";
   }
 
-  let yOffset = type === "red" ? 2 : type === "black" ? 1 : 0;
+  let yOffset = type === "red" ? 5 : type === "black" ? 3 : 0;
   let z = {
     x: Math.random() * (canvas.width - 40) + 20,
     y: spawnLineY + yOffset,
@@ -99,26 +99,33 @@ function update() {
     b.x += b.dx;
     b.y += b.dy;
     ctx.fillRect(b.x, b.y, 6, 6);
-    if (b.y < 0) bullets.splice(i, 1);
+
+    if (b.y < 0 || b.y > canvas.height) bullets.splice(i, 1);
+
+    if (b.fromZombie && Math.abs(b.x - player.x) < 10 && Math.abs(b.y - player.y) < 20) {
+      isGameOver = true;
+    }
   });
 
   let now = Date.now();
   zombies.forEach((z, zi) => {
-    if (z.type === "black") {
-      if (!blackZombieShootTimers.has(z)) blackZombieShootTimers.set(z, now);
-      if (now - blackZombieShootTimers.get(z) >= 1500) {
-        bullets.push({ x: z.x - 10, y: z.y + 10, dx: 0, dy: 4 });
-        bullets.push({ x: z.x + 10, y: z.y + 10, dx: 0, dy: 4 });
-        blackZombieShootTimers.set(z, now);
+    if (z.type === "black" || z.type === "red") {
+      if (!zombieShootTimers.has(z)) zombieShootTimers.set(z, now);
+      if (now - zombieShootTimers.get(z) >= 1500) {
+        bullets.push({ x: z.x - 10, y: z.y + 10, dx: 0, dy: 4, fromZombie: true });
+        bullets.push({ x: z.x + 10, y: z.y + 10, dx: 0, dy: 4, fromZombie: true });
+        zombieShootTimers.set(z, now);
       }
+    } else if (z.type === "green") {
+      z.y += 1;
     }
 
-    drawStickman(z.x, z.y, z.type, z.type === "black");
+    drawStickman(z.x, z.y, z.type, z.type === "black" || z.type === "red");
 
     if (Math.abs(z.x - player.x) < 20 && Math.abs(z.y - player.y) < 20) isGameOver = true;
 
     bullets.forEach((b, bi) => {
-      if (b.x > z.x - 10 && b.x < z.x + 10 && b.y > z.y && b.y < z.y + 20) {
+      if (!b.fromZombie && b.x > z.x - 10 && b.x < z.x + 10 && b.y > z.y && b.y < z.y + 20) {
         zombies.splice(zi, 1);
         bullets.splice(bi, 1);
         score += z.type === "red" ? 4 : z.type === "black" ? 12 : 1;
